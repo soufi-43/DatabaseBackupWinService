@@ -14,8 +14,8 @@ namespace DatabaseBackupService
 {
     public partial class DatabaseBackupService : ServiceBase
     {
-        private string sourceFolder;
-        private string destinationFolder;
+        private string ConnectionString;
+        private string BackupFolder;
         private string logFolder;
 
 
@@ -30,22 +30,22 @@ namespace DatabaseBackupService
 
             // Read log directory path from App.config
             //The service reads the log directory path from an external configuration file (App.config) for flexibility.
+            ConnectionString = ConfigurationManager.AppSettings["ConnectionString"];
             logFolder = ConfigurationManager.AppSettings["LogFolder"];
-            sourceFolder = ConfigurationManager.AppSettings["SourceFolder"];
-            destinationFolder = ConfigurationManager.AppSettings["DestinationFolder"];
+            BackupFolder = ConfigurationManager.AppSettings["BackupFolder"];
 
 
             // Validate and create directory if it doesn't exist
-            if (string.IsNullOrWhiteSpace(sourceFolder))
+            if (string.IsNullOrWhiteSpace(ConnectionString))
             {
-                logFolder = @"C:\sourceFolder";
-                LogServiceEvent("source folder is missing in app.config we use the default " + sourceFolder);
+                ConnectionString = @"Server=.;Database=HorseClinic;User Id=sa;Password=sa123456;Integrated Security=True;";
+                LogServiceEvent("connection string is missing in app.config we use the default " + ConnectionString);
             }
 
-            if (string.IsNullOrWhiteSpace(destinationFolder))
+            if (string.IsNullOrWhiteSpace(BackupFolder))
             {
-                destinationFolder = @"C:\destinationFolder";
-                LogServiceEvent("destination folder is missing in app.config we use the default " + destinationFolder);
+                BackupFolder = @"C:\BackupFolder";
+                LogServiceEvent("BackupFolder folder is missing in app.config we use the default " + BackupFolder);
             }
             if (string.IsNullOrWhiteSpace(logFolder))
             {
@@ -53,13 +53,12 @@ namespace DatabaseBackupService
                 LogServiceEvent("destination folder is missing in app.config we use the default " + logFolder);
             }
 
-            Directory.CreateDirectory(sourceFolder);
-            Directory.CreateDirectory(destinationFolder);
+            Directory.CreateDirectory(BackupFolder);
             Directory.CreateDirectory(logFolder);
         }
         private void LogServiceEvent(string message)
         {
-            string logFilePath = Path.Combine(logFolder, "FileMonitoringLog.txt");
+            string logFilePath = Path.Combine(logFolder, "DatabaseBackupWinLog.txt");
             string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n";
             File.AppendAllText(logFilePath, logMessage);
 
