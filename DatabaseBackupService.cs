@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -71,15 +72,48 @@ namespace DatabaseBackupService
 
         public void StartConsole()
         {
+            OnStart(null);
+            Console.WriteLine("press any key to stop the service");
+            Console.ReadKey();
+            OnStop();
+
 
         }
 
         protected override void OnStart(string[] args)
         {
+            LogServiceEvent("Service Started");
+            try
+            {
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string backupFile = Path.Combine(BackupFolder, $"Backup_{timestamp}.bak");
+
+                string sqlBackup = $@"
+            BACKUP DATABASE [HorseClinic]
+            TO DISK = '{backupFile}'
+            WITH FORMAT, INIT, SKIP, NOREWIND, NOUNLOAD, STATS = 10;";
+
+                using (SqlConnection conn = new SqlConnection(ConnectionString))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand(sqlBackup, conn))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LogServiceEvent($"Backup successful: {backupFile}");
+            }
+            catch (Exception ex)
+            {
+                LogServiceEvent($"Backup failed: {ex.Message}");
+            }
         }
 
         protected override void OnStop()
         {
+            LogServiceEvent("Service Stopped");
+
         }
     }
 }
