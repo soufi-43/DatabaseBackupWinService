@@ -9,15 +9,18 @@ using System.IO;
 using System.Linq;
 using System.ServiceProcess;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
+
 
 namespace DatabaseBackupService
 {
     public partial class DatabaseBackupService : ServiceBase
     {
+        private Timer backupTimer; 
         private string ConnectionString;
         private string BackupFolder;
         private string logFolder;
+        private int backupIntervalMinutes;
 
 
         public DatabaseBackupService()
@@ -34,6 +37,7 @@ namespace DatabaseBackupService
             ConnectionString = ConfigurationManager.AppSettings["ConnectionString"];
             logFolder = ConfigurationManager.AppSettings["LogFolder"];
             BackupFolder = ConfigurationManager.AppSettings["BackupFolder"];
+            backupIntervalMinutes = int.TryParse( ConfigurationManager.AppSettings["BackupIntervalMinutes"],out int interval ) ? interval : 60 ;
 
 
             // Validate and create directory if it doesn't exist
@@ -83,10 +87,27 @@ namespace DatabaseBackupService
         protected override void OnStart(string[] args)
         {
             LogServiceEvent("Service Started");
+
+            backupTimer = new Timer(
+
+                callback: PerformBackup,
+                state: null,
+                dueTime: TimeSpan.Zero,
+                period: TimeSpan.FromMinutes(backupIntervalMinutes) 
+                );
+
+            LogServiceEvent($"backup initiated every {backupIntervalMinutes} minutes ");
+
+
+           
+        }
+
+        private void PerformBackup(object state)
+        {
             try
             {
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                string backupFile = Path.Combine(BackupFolder, $"Backup_{timestamp}.bak");
+                string backupFile = Path.Combine(BackupFolder, $"Backup_{timestamp} horse clinic .bak");
 
                 string sqlBackup = $@"
             BACKUP DATABASE [HorseClinic]
@@ -110,8 +131,11 @@ namespace DatabaseBackupService
             }
         }
 
+        
+
         protected override void OnStop()
         {
+            backupTimer?.Dispose(); 
             LogServiceEvent("Service Stopped");
 
         }
